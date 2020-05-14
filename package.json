@@ -1,0 +1,15 @@
+{
+  "name": "ballgame",
+  "version": "1.0.0",
+  "description": "simple html5 game",
+  "main": "app.js",
+  "dependencies": {
+    "typescript": "^3.8.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
