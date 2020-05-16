@@ -7,7 +7,13 @@
   // this youtube course is useful:
   //https://www.youtube.com/watch?v=yq2au9EfeRQ
 
-interface CollisionHandler {
+
+  // this is a really good resource for circle/rectangle collision detection:
+  // http://www.jeffreythompson.org/collision-detection/circle-rect.php
+
+  //
+
+interface LimitsHitVelocityHandler {
   (maxHit: boolean, velAtHit: number) : number;
 }
 
@@ -23,11 +29,11 @@ class PhysicsAxis {
   }
 
   /**
-   * Not the most accurate way to calculate axis position of a moving object - Velocity Verlet would
-   * give better accuracy. But for our purposes, it's probably fine.
+   * Not an accurate way to calculate axis position of a moving object - Velocity Verlet would
+   * give better accuracy. But for our purposes, it's fine.
    * @param stepTimeInMS the time step in milliseconds
    */
-  public calcEulerStep(stepTimeInMS: number, minLimit: number = 0, maxLimit: number = window.innerWidth, collisionHandler: CollisionHandler): void {
+  public calcEulerStep(stepTimeInMS: number, minLimit: number = 0, maxLimit: number = window.innerWidth, collisionHandler: LimitsHitVelocityHandler): void {
     let dX = stepTimeInMS / 1000;
     let newVel = this.vel + (this.acc * dX);
     let newPos = this.pos + (this.vel * dX);
@@ -67,7 +73,7 @@ class PhysicsAxis {
   }
 }
 
-class Particle {
+class Circle {
 
   /**
    * 
@@ -90,17 +96,65 @@ class Particle {
   // bounce off the sides of the canvas area
   public update(deltaMS: number) {
     this.x.calcEulerStep(deltaMS, this.r, window.innerWidth - this.r, (maxHit, velAtHit) => -velAtHit);
-    this.y.calcEulerStep(deltaMS, this.r, window.innerHeight - this.r, (maxHit, velAtHit) => maxHit ? -velAtHit * 0.8 : -velAtHit);
+    this.y.calcEulerStep(deltaMS, this.r, window.innerHeight - this.r, (maxHit, velAtHit) => maxHit ? -velAtHit * 0.4 : -velAtHit);
   }
 }
 
-class Ball extends Particle {
+class Particle extends Circle {
+  public constructor(x: PhysicsAxis, 
+    y: PhysicsAxis,
+    r: number,
+    protected lifespan: number) {
+      super(x, y, r);
+      this.liveTime = 0;
+  }
+
+  private liveTime: number;
+
+  public get isAlive(): boolean {
+    return this.liveTime < this.lifespan;
+  }
 
   public update(deltaMS: number) {
-    
-    
-      super.update(deltaMS);
-     // otherwise flag somehow the game is over (or a life is lost)
+    super.update(deltaMS);
+    this.liveTime += deltaMS;
+  }
+
+  public draw(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.globalAlpha = 1 - this.liveTime / this.lifespan;
+    super.draw(ctx);
+    ctx.restore();
+  }
+}
+
+class ParticleShower {
+  private particles: Particle[];
+
+  public constructor(private x: number, private y: number) {
+    this.particles = new Array<Particle>();
+  }
+
+  public update(deltaMS: number) {
+    if (Math.random() < 0.5) {
+      let p = new Particle(new PhysicsAxis(this.x, (Math.random() - 0.5) * 200, 0), 
+                          new PhysicsAxis(this.y, -(Math.random() * 800), 1900),
+                          2 + (Math.random() * 8), 200 + Math.random() * 1800);
+      this.particles.push(p);
+      this.particles = this.particles.filter(p => p.isAlive);
+      
+    }
+    for (let p of this.particles) {
+      p.update(deltaMS);
+    }
+  }
+
+  public draw(ctx: CanvasRenderingContext2D) {
+    if (this.particles.length > 0) {
+      for (let p of this.particles) {
+        p.draw(ctx);
+      }
+    }
   }
 }
 
@@ -118,7 +172,9 @@ class BallGame {
 
   private lastModelUpdateTime: number;
 
-  private ball: Ball;
+  private ball: Circle;
+
+  private particleShower: ParticleShower;
   
   constructor() {
       this.canvas = document.getElementById('gamecanvas') as
@@ -137,10 +193,12 @@ class BallGame {
       */
   
       // TODO: place ball on surface of bat
-      this.ball = new Ball(
+      /*this.ball = new Circle(
         new PhysicsAxis(Math.random() * window.innerWidth, 200, 0),
-        new PhysicsAxis(Math.random() * window.innerHeight, -130, 1200),
+        new PhysicsAxis(Math.random() * window.innerHeight, -130, 1900),
         20);
+        */
+       this.particleShower = new ParticleShower(window.innerWidth / 2, window.innerHeight / 2);
   }
 
   public draw(frameTime: number) {
@@ -150,9 +208,14 @@ class BallGame {
     {
       let elapsedTime = frameTime - this.lastModelUpdateTime;
 
-      this.context.clearRect(0, 0, window.innerWidth, window.innerHeight);
-      this.ball.draw(this.context);
-      this.ball.update(elapsedTime);
+      this.context.fillStyle = "#000";
+      this.context.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      this.context.fillStyle = "#fff";
+
+      //this.ball.draw(this.context);
+      //this.ball.update(elapsedTime);
+      this.particleShower.draw(this.context);
+      this.particleShower.update(elapsedTime);
     }
 
     this.lastModelUpdateTime = frameTime;
