@@ -3,10 +3,18 @@
     "target": "es5",
     "module": "commonjs",
     "sourceMap": true,
+    "removeComments": true,
     "lib": [
       "es5",
       "dom"
     ],
-    "outDir": "out"
-  }
+    "outDir": "js"
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+      "node_modules",
+      "**/*.spec.ts"
+  ]
 }

@@ -1,21 +1,36 @@
+export interface IClickHandler {
+  (x: number, y: number): void;
+}
+export interface IDragHandler {
+  (dragStartX: number, dragStartY: number, x: number, y: number): void;
+}
+
 /**
  * Interprets basic mouse/touch events into semantic click and
- * stateful drag events, and provides unified eventing for both mouse and touch
+ * stateful drag events, to provide unified eventing for both mouse and touch
  */
-
- class EventInterpreter {
+ export class EventBridge {
 
   private mouseOrTouchDown: boolean;
 
   private startMoveX: number;
   private startMoveY: number;
 
+  private clickHandler: IClickHandler;
+  private dragHandler: IDragHandler;
 
   public constructor(private domElementToListenFor: HTMLElement) {
-
+    this.registerEventHandlers();
   }
 
-  /*
+  public addClickHandler(clickHandler: IClickHandler) {
+    this.clickHandler = clickHandler;
+  }
+
+  public addDragHandler(dragHandler: IDragHandler) {
+    this.dragHandler = dragHandler;
+  }
+
   private registerEventHandlers() {
     this.domElementToListenFor.addEventListener("mousedown", this.pressEventHandler);
     this.domElementToListenFor.addEventListener("mousemove", this.dragEventHandler);
@@ -29,18 +44,18 @@
   }
 
   private pressEventHandler = (e: MouseEvent | TouchEvent) => {
-    let mouseX = (e as TouchEvent).changedTouches ?
+    this.startMoveX = (e as TouchEvent).changedTouches ?
                  (e as TouchEvent).changedTouches[0].pageX :
                  (e as MouseEvent).pageX;
-    let mouseY = (e as TouchEvent).changedTouches ?
+    this.startMoveY = (e as TouchEvent).changedTouches ?
                  (e as TouchEvent).changedTouches[0].pageY :
                  (e as MouseEvent).pageY;
-    mouseX -= this.canvas.offsetLeft;
-    mouseY -= this.canvas.offsetTop;
+    this.startMoveX -= this.domElementToListenFor.offsetLeft;
+    this.startMoveY -= this.domElementToListenFor.offsetTop;
 
-    this.paint = true;
-    this.addClick(mouseX, mouseY, false);
-    this.redraw();
+    this.mouseOrTouchDown = true;
+
+    this.clickHandler(this.startMoveX, this.startMoveY);
 }
 
 private dragEventHandler = (e: MouseEvent | TouchEvent) => {
@@ -50,14 +65,21 @@ private dragEventHandler = (e: MouseEvent | TouchEvent) => {
     let mouseY = (e as TouchEvent).changedTouches ?
                  (e as TouchEvent).changedTouches[0].pageY :
                  (e as MouseEvent).pageY;
-    mouseX -= this.canvas.offsetLeft;
-    mouseY -= this.canvas.offsetTop;
+    mouseX -= this.domElementToListenFor.offsetLeft;
+    mouseY -= this.domElementToListenFor.offsetTop;
 
-    if (this.paint) {
-        this.addClick(mouseX, mouseY, true);
-        this.redraw();
+    if (this.mouseOrTouchDown) {
+      this.dragHandler(this.startMoveX, this.startMoveY, mouseX, mouseY);
     }
 
     e.preventDefault();
-} */
- }
+  }
+
+  private releaseEventHandler = (e: MouseEvent | TouchEvent) => {
+    this.mouseOrTouchDown = false;
+  }
+
+  private cancelEventHandler = (e: MouseEvent | TouchEvent) => {
+    this.mouseOrTouchDown = false;
+  }
+}
